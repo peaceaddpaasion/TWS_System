@@ -28,6 +28,26 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tws-system-secret'
 
 # ============================================================
+# CORS support (allow frontend at localhost:8080 to call API)
+# ============================================================
+@app.after_request
+def cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    return response
+
+
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        resp = app.make_default_options_response()
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        return resp
+
+# ============================================================
 # TWS Warehouse Simulation
 # ============================================================
 
