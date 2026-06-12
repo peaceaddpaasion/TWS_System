@@ -3,7 +3,7 @@
 TWS - Tool Warehouse System
 ============================
 RESTful API backend with SQLite persistence.
-Integrates ETMS (employee/tool management) and WMS (warehouse robot simulation).
+Includes warehouse robot/conveyor belt simulation.
 """
 
 import os
