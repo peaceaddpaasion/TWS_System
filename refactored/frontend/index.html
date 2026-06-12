@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ETMS - 员工与工具管理系统 | 现代化智能仓库管理平台" />
+  <title>ETMS - 员工与工具管理系统</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Favicon (inline SVG) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F527;</text></svg>" />
+</head>
+<body>
+
+  <!-- ============================================
+       登录页面
+       ============================================ -->
+  <div id="login-page" class="login-page">
+    <!-- 动画背景 -->
+    <div class="login-bg"></div>
+
+    <!-- 浮动粒子 -->
+    <div class="login-particles">
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+      <div class="login-particle"></div>
+    </div>
+
+    <!-- 登录卡片 -->
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">&#x1F527;</div>
+        <h1>ETMS</h1>
+        <p>员工与工具管理系统</p>
+      </div>
+
+      <form id="login-form" class="login-form">
+        <div class="form-group">
+          <label class="form-label">用户名</label>
+          <input
+            type="text"
+            id="login-username"
+            class="form-input"
+            placeholder="请输入用户名"
+            autocomplete="username"
+            value="admin"
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input
+            type="password"
+            id="login-password"
+            class="form-input"
+            placeholder="请输入密码"
+            autocomplete="current-password"
+            value="admin123"
+          />
+        </div>
+        <button type="submit" class="login-btn">登 录</button>
+      </form>
+
+      <div class="login-footer">
+        &copy; 2024 ETMS 员工与工具管理系统 &middot; 前后端分离架构重构版
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       应用主布局
+       ============================================ -->
+  <div id="app-layout" class="app-layout">
+
+    <!-- 侧边栏 -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">&#x1F527;</div>
+        <div class="sidebar-brand">
+          ETMS
+          <span>智能仓库管理</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">主导航</div>
+
+        <div class="nav-item" data-view="dashboard">
+          <span class="nav-item-icon">&#x1F4CA;</span>
+          <span class="nav-item-label">仪表盘</span>
+        </div>
+
+        <div class="nav-item" data-view="tools">
+          <span class="nav-item-icon">&#x1F527;</span>
+          <span class="nav-item-label">工具管理</span>
+        </div>
+
+        <div class="nav-item" data-view="employees">
+          <span class="nav-item-icon">&#x1F465;</span>
+          <span class="nav-item-label">员工管理</span>
+        </div>
+
+        <div class="nav-section-title">业务操作</div>
+
+        <div class="nav-item" data-view="lending">
+          <span class="nav-item-icon">&#x1F504;</span>
+          <span class="nav-item-label">借用管理</span>
+        </div>
+
+        <div class="nav-item" data-view="requests">
+          <span class="nav-item-icon">&#x1F4CB;</span>
+          <span class="nav-item-label">借用申请</span>
+          <span class="nav-badge" id="request-badge">3</span>
+        </div>
+
+        <div class="nav-section-title">系统</div>
+
+        <div class="nav-item" id="sidebar-collapse-btn">
+          <span class="nav-item-icon">&#x2B1A;</span>
+          <span class="nav-item-label">收起侧边栏</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user" id="logout-btn">
+          <div class="sidebar-avatar" id="sidebar-user-avatar">陈</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name" id="sidebar-user-name">陈明</div>
+            <div class="sidebar-user-role" id="sidebar-user-role">技术主管</div>
+          </div>
+          <span style="color:var(--text-muted);font-size:14px;" title="退出登录">&#x23FB;</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 侧边栏遮罩（移动端） -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- 主内容区 -->
+    <div id="main-content" class="main-content">
+
+      <!-- 顶部导航栏 -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="menu-toggle" class="menu-toggle" title="打开菜单">&#x2630;</button>
+          <h1 id="topbar-title" class="topbar-title">仪表盘</h1>
+        </div>
+        <div class="topbar-right">
+          <div id="topbar-clock" class="topbar-clock"></div>
+          <button id="notification-btn" class="topbar-btn" title="通知">
+            &#x1F514;
+            <span id="notification-badge" class="badge-dot"></span>
+          </button>
+          <button class="topbar-btn" title="全屏" onclick="toggleFullscreen()">&#x26F6;</button>
+        </div>
+      </header>
+
+      <!-- 页面内容（动态渲染） -->
+      <main id="page-content" class="page-content">
+        <!-- 内容由 app.js 动态渲染 -->
+      </main>
+    </div>
+  </div>
+
+  <!-- ============================================
+       通知面板
+       ============================================ -->
+  <div id="notification-panel" class="notification-panel">
+    <div class="notification-header">
+      <h3>&#x1F514; 通知中心</h3>
+      <button class="modal-close" onclick="toggleNotificationPanel()">&times;</button>
+    </div>
+    <div id="notification-list" class="notification-list">
+      <!-- 通知列表由 app.js 动态渲染 -->
+    </div>
+  </div>
+
+  <!-- ============================================
+       Toast 通知容器
+       ============================================ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ============================================
+       应用脚本
+       ============================================ -->
+  <script src="app.js"></script>
+
+  <!-- 全屏切换辅助脚本 -->
+  <script>
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(function() {});
+      } else {
+        document.exitFullscreen().catch(function() {});
+      }
+    }
+  </script>
+
+</body>
+</html>
