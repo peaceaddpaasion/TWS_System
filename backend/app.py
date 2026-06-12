@@ -742,7 +742,7 @@ def create_lending():
 
     db = get_db()
 
-    # Permission check: normal employees can only borrow from their own department
+    # Permission check: normal employees can only borrow from their own company
     user = db.execute("SELECT * FROM EMPLOYEE WHERE EID = ?", (eid,)).fetchone()
     if not user:
         return fail("Employee not found")
@@ -751,9 +751,9 @@ def create_lending():
     if not tool:
         return fail("Tool not found")
 
-    # Permission: expert can borrow any, normal only same department
-    if user['Worktype'] == 'normal' and user['Depart'] != tool['Soncmp']:
-        return fail("Normal employees can only borrow tools from their own department")
+    # Permission: expert can borrow any, normal only same company
+    if user['Worktype'] == 'normal' and user['Soncmp'] != tool['Soncmp']:
+        return fail("Normal employees can only borrow tools from their own company")
 
     if tool['Good'] == 0:
         return fail("Tool is damaged")
@@ -833,8 +833,8 @@ def create_request():
 
     # Permission check
     user = db.execute("SELECT * FROM EMPLOYEE WHERE EID = ?", (current_eid,)).fetchone()
-    if user['Worktype'] == 'normal' and user['Depart'] != tool['Soncmp']:
-        return fail("You can only request tools from your own department")
+    if user['Worktype'] == 'normal' and user['Soncmp'] != tool['Soncmp']:
+        return fail("You can only request tools from your own company")
 
     # Mark as pending
     db.execute("UPDATE TOOL SET Borrow = -1 WHERE TID = ?", (tid,))
