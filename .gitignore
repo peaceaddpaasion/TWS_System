@@ -26,6 +26,11 @@ desktop.ini
 
 # Database
 *.sql.bak
+*.db
+
+# Legacy simulation (not part of refactored version)
+simulation/
+software_homework-master/
 
 # Logs
 *.log

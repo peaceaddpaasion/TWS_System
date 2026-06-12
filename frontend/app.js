@@ -1,7 +1,24 @@
 /* ============================================
-   ETMS - 员工与工具管理系统
-   主应用逻辑 - Vanilla JS SPA
+   TWS - Tool Warehouse System
+   Vanilla JS SPA with SQLite persistence
    ============================================ */
+
+// ========== API 配置 ==========
+const API_BASE = 'http://localhost:8900/api';
+
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem('tws_token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { ...headers, ...options.headers },
+  });
+  const body = await res.json();
+  if (!body.success) throw new Error(body.message || '请求失败');
+  return body.data;
+}
 
 // ========== 应用状态管理 ==========
 const AppState = {
@@ -26,64 +43,56 @@ const AppState = {
   pageSize: 10,
 };
 
-// ========== 初始化模拟数据 ==========
-function initMockData() {
-  AppState.tools = [
-    { id: 'T001', name: '电钻', category: '电动工具', brand: '博世', model: 'GBH 2-26', status: 'available', location: 'A-01-03', purchaseDate: '2024-03-15', price: 1280, quantity: 5, available: 3, image: '' },
-    { id: 'T002', name: '角磨机', category: '电动工具', brand: '牧田', model: 'GA5030R', status: 'available', location: 'A-01-05', purchaseDate: '2024-02-20', price: 680, quantity: 8, available: 5, image: '' },
-    { id: 'T003', name: '万用表', category: '测量仪器', brand: '福禄克', model: 'Fluke 87V', status: 'borrowed', location: 'B-02-01', purchaseDate: '2024-01-10', price: 3200, quantity: 3, available: 1, image: '' },
-    { id: 'T004', name: '液压千斤顶', category: '起重设备', brand: 'CLARK', model: 'CJ-20T', status: 'available', location: 'C-03-02', purchaseDate: '2023-11-05', price: 4500, quantity: 2, available: 2, image: '' },
-    { id: 'T005', name: '焊接机', category: '焊接设备', brand: '林肯', model: 'MIG-250', status: 'maintenance', location: 'D-01-01', purchaseDate: '2023-09-18', price: 8900, quantity: 2, available: 0, image: '' },
-    { id: 'T006', name: '扳手套装', category: '手动工具', brand: '世达', model: 'SATA-42件', status: 'available', location: 'A-02-07', purchaseDate: '2024-04-01', price: 560, quantity: 10, available: 7, image: '' },
-    { id: 'T007', name: '激光测距仪', category: '测量仪器', brand: '徕卡', model: 'D2', status: 'borrowed', location: 'B-02-03', purchaseDate: '2024-05-12', price: 2100, quantity: 4, available: 2, image: '' },
-    { id: 'T008', name: '空气压缩机', category: '气动设备', brand: '阿特拉斯', model: 'XH-200', status: 'available', location: 'C-01-01', purchaseDate: '2023-08-22', price: 15600, quantity: 1, available: 1, image: '' },
-    { id: 'T009', name: '安全帽', category: '安全防护', brand: '3M', model: 'H-700', status: 'available', location: 'E-01-01', purchaseDate: '2024-06-01', price: 85, quantity: 50, available: 38, image: '' },
-    { id: 'T010', name: '热成像仪', category: '检测设备', brand: 'FLIR', model: 'E8', status: 'borrowed', location: 'B-03-01', purchaseDate: '2024-01-25', price: 12800, quantity: 1, available: 0, image: '' },
-    { id: 'T011', name: '电动螺丝刀', category: '电动工具', brand: '博世', model: 'GSR 12V', status: 'available', location: 'A-01-08', purchaseDate: '2024-03-28', price: 420, quantity: 6, available: 4, image: '' },
-    { id: 'T012', name: '光纤熔接机', category: '通信设备', brand: '藤仓', model: '70S', status: 'available', location: 'B-01-02', purchaseDate: '2023-12-10', price: 28000, quantity: 1, available: 1, image: '' },
-    { id: 'T013', name: '绝缘手套', category: '安全防护', brand: '雷克', model: 'LK-12KV', status: 'available', location: 'E-02-01', purchaseDate: '2024-05-20', price: 120, quantity: 30, available: 22, image: '' },
-    { id: 'T014', name: '数字示波器', category: '测量仪器', brand: '泰克', model: 'TBS1052B', status: 'maintenance', location: 'B-02-05', purchaseDate: '2023-10-15', price: 6500, quantity: 2, available: 0, image: '' },
-    { id: 'T015', name: '切割机', category: '电动工具', brand: '牧田', model: '4100NH', status: 'available', location: 'A-03-01', purchaseDate: '2024-04-18', price: 2400, quantity: 3, available: 2, image: '' },
-  ];
+// ========== 从 API 加载数据 ==========
+async function fetchAllData() {
+  try {
+    const [tools, employees, lending, requests, notifs] = await Promise.all([
+      api('/tools'),
+      api('/employees'),
+      api('/lending'),
+      api('/requests'),
+      api('/notifications'),
+    ]);
 
-  AppState.employees = [
-    { id: 'E001', name: '张伟', department: '技术部', position: '高级工程师', phone: '138****1234', email: 'zhangwei@etms.com', status: 'active', joinDate: '2022-03-15', avatar: '' },
-    { id: 'E002', name: '李娜', department: '运维部', position: '运维工程师', phone: '139****5678', email: 'lina@etms.com', status: 'active', joinDate: '2022-06-20', avatar: '' },
-    { id: 'E003', name: '王强', department: '项目部', position: '项目经理', phone: '137****9012', email: 'wangqiang@etms.com', status: 'active', joinDate: '2021-09-10', avatar: '' },
-    { id: 'E004', name: '刘芳', department: '质检部', position: '质量工程师', phone: '136****3456', email: 'liufang@etms.com', status: 'active', joinDate: '2023-01-08', avatar: '' },
-    { id: 'E005', name: '陈明', department: '技术部', position: '技术主管', phone: '135****7890', email: 'chenming@etms.com', status: 'active', joinDate: '2020-11-25', avatar: '' },
-    { id: 'E006', name: '赵丽', department: '行政部', position: '行政专员', phone: '134****2345', email: 'zhaoli@etms.com', status: 'active', joinDate: '2023-05-15', avatar: '' },
-    { id: 'E007', name: '孙磊', department: '运维部', position: '维修技师', phone: '133****6789', email: 'sunlei@etms.com', status: 'active', joinDate: '2022-08-30', avatar: '' },
-    { id: 'E008', name: '周婷', department: '采购部', position: '采购专员', phone: '132****0123', email: 'zhouting@etms.com', status: 'active', joinDate: '2023-03-22', avatar: '' },
-    { id: 'E009', name: '吴刚', department: '技术部', position: '工程师', phone: '131****4567', email: 'wugang@etms.com', status: 'inactive', joinDate: '2021-07-18', avatar: '' },
-    { id: 'E010', name: '郑华', department: '项目部', position: '项目工程师', phone: '130****8901', email: 'zhenghua@etms.com', status: 'active', joinDate: '2022-12-05', avatar: '' },
-  ];
+    AppState.tools = (tools || []).map(t => ({
+      id: t.TID, name: t.Name, category: t.Tooltype || '',
+      brand: '', model: '',
+      status: t.Borrow || 'available', location: t.Soncmp || '',
+      purchaseDate: '', price: t.Price || 0,
+      quantity: 1, available: t.Borrow === 'available' ? 1 : 0, image: '',
+      soncmp: t.Soncmp || '', good: t.Good || 'Normal',
+    }));
 
-  AppState.lendingRecords = [
-    { id: 'L001', toolId: 'T003', toolName: '万用表', employeeId: 'E001', employeeName: '张伟', borrowDate: '2024-06-01', returnDate: '', expectedReturn: '2024-06-15', status: 'active', purpose: '设备巡检' },
-    { id: 'L002', toolId: 'T007', toolName: '激光测距仪', employeeId: 'E003', employeeName: '王强', borrowDate: '2024-06-03', returnDate: '', expectedReturn: '2024-06-10', status: 'active', purpose: '现场测量' },
-    { id: 'L003', toolId: 'T010', toolName: '热成像仪', employeeId: 'E005', employeeName: '陈明', borrowDate: '2024-05-28', returnDate: '', expectedReturn: '2024-06-28', status: 'active', purpose: '故障诊断' },
-    { id: 'L004', toolId: 'T002', toolName: '角磨机', employeeId: 'E007', employeeName: '孙磊', borrowDate: '2024-05-20', returnDate: '2024-05-30', expectedReturn: '2024-05-30', status: 'returned', purpose: '设备维修' },
-    { id: 'L005', toolId: 'T001', toolName: '电钻', employeeId: 'E002', employeeName: '李娜', borrowDate: '2024-05-15', returnDate: '2024-05-25', expectedReturn: '2024-05-25', status: 'returned', purpose: '安装作业' },
-    { id: 'L006', toolId: 'T006', toolName: '扳手套装', employeeId: 'E010', employeeName: '郑华', borrowDate: '2024-06-05', returnDate: '', expectedReturn: '2024-06-12', status: 'active', purpose: '设备拆装' },
-    { id: 'L007', toolId: 'T009', toolName: '安全帽', employeeId: 'E003', employeeName: '王强', borrowDate: '2024-06-04', returnDate: '', expectedReturn: '2024-06-18', status: 'active', purpose: '现场施工' },
-  ];
+    AppState.employees = (employees || []).map(e => ({
+      id: e.EID, name: e.Name, department: e.Depart || '',
+      position: e.Worktype || '', phone: '', email: '',
+      status: 'active', joinDate: '', avatar: '', soncmp: e.Soncmp || '',
+    }));
 
-  AppState.borrowRequests = [
-    { id: 'R001', toolId: 'T004', toolName: '液压千斤顶', employeeId: 'E001', employeeName: '张伟', requestDate: '2024-06-10', reason: '设备安装需要使用千斤顶进行起重作业', status: 'pending', quantity: 1 },
-    { id: 'R002', toolId: 'T008', toolName: '空气压缩机', employeeId: 'E007', employeeName: '孙磊', requestDate: '2024-06-09', reason: '气动工具维修需要压缩空气供应', status: 'pending', quantity: 1 },
-    { id: 'R003', toolId: 'T012', toolName: '光纤熔接机', employeeId: 'E002', employeeName: '李娜', requestDate: '2024-06-08', reason: '网络光纤线路维护', status: 'approved', quantity: 1 },
-    { id: 'R004', toolId: 'T011', toolName: '电动螺丝刀', employeeId: 'E010', employeeName: '郑华', requestDate: '2024-06-07', reason: '设备组装拆卸作业', status: 'rejected', quantity: 2 },
-    { id: 'R005', toolId: 'T001', toolName: '电钻', employeeId: 'E004', employeeName: '刘芳', requestDate: '2024-06-11', reason: '质检部设备安装', status: 'pending', quantity: 1 },
-  ];
+    AppState.lendingRecords = (lending || []).map(r => ({
+      id: r.LID, toolId: r.TID, toolName: r.ToolName || '',
+      employeeId: r.EID, employeeName: r.EmployeeName || '',
+      borrowDate: r.Lendtime || '', returnDate: '',
+      expectedReturn: '', status: 'active', purpose: '',
+    }));
 
-  AppState.notifications = [
-    { id: 'N001', type: 'warning', title: '工具逾期未还', desc: '张伟借用的万用表已超过预期归还日期', time: '10分钟前', read: false },
-    { id: 'N002', type: 'info', title: '新借用申请', desc: '张伟申请借用液压千斤顶', time: '30分钟前', read: false },
-    { id: 'N003', type: 'success', title: '工具已归还', desc: '孙磊已归还角磨机', time: '2小时前', read: true },
-    { id: 'N004', type: 'info', title: '新员工入职', desc: '新员工黄磊已加入技术部', time: '1天前', read: true },
-    { id: 'N005', type: 'warning', title: '设备维护提醒', desc: '焊接机维护保养即将到期', time: '1天前', read: true },
-  ];
+    AppState.borrowRequests = (requests || []).map(r => ({
+      id: r.TID, toolId: r.TID, toolName: r.ToolName || '',
+      employeeId: r.EID, employeeName: r.EmployeeName || '',
+      requestDate: r.Lendtime || '', reason: '',
+      status: 'pending', quantity: 1,
+    }));
+
+    AppState.notifications = (notifs || []).map(n => ({
+      id: n.NID, type: n.Type || 'info', title: n.Title || '',
+      desc: n.Detail || '', time: n.Time || '', read: !!n.Read,
+    }));
+
+    return true;
+  } catch (e) {
+    console.error('Failed to load data:', e);
+    return false;
+  }
 }
 
 // ========== 工具函数 ==========
@@ -269,7 +278,7 @@ function showLoginView() {
   AppState.currentView = 'login';
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
   const username = document.getElementById('login-username').value.trim();
   const password = document.getElementById('login-password').value.trim();
@@ -279,22 +288,29 @@ function handleLogin(e) {
     return;
   }
 
-  // 模拟登录验证
-  AppState.currentUser = {
-    id: 'E005',
-    name: '陈明',
-    department: '技术部',
-    position: '技术主管',
-    role: 'admin',
-  };
+  try {
+    const data = await api('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
 
-  showToast('success', '登录成功', `欢迎回来，${AppState.currentUser.name}`);
-  updateSidebarUser();
-  navigate('dashboard');
+    localStorage.setItem('tws_token', data.token);
+    AppState.currentUser = data.user;
+
+    // 登录成功后加载所有数据
+    await fetchAllData();
+
+    showToast('success', '登录成功', `欢迎回来，${AppState.currentUser.name}`);
+    updateSidebarUser();
+    navigate('dashboard');
+  } catch (err) {
+    showToast('error', '登录失败', err.message || '用户名或密码错误');
+  }
 }
 
 function handleLogout() {
   AppState.currentUser = null;
+  localStorage.removeItem('tws_token');
   showToast('info', '已退出', '您已安全退出系统');
   navigate('login');
 }
@@ -719,7 +735,7 @@ function openToolModal(toolId) {
   document.body.appendChild(overlay);
 }
 
-function saveTool(toolId) {
+async function saveTool(toolId) {
   const name = document.getElementById('modal-tool-name').value.trim();
   const category = document.getElementById('modal-tool-category').value;
   const brand = document.getElementById('modal-tool-brand').value.trim();
@@ -735,27 +751,31 @@ function saveTool(toolId) {
     return;
   }
 
-  if (toolId) {
-    // 编辑
-    const tool = AppState.tools.find(t => t.id === toolId);
-    if (tool) {
-      Object.assign(tool, { name, category, brand, model, quantity, available, location, price, status });
+  try {
+    let result;
+    if (toolId) {
+      result = await api(`/tools/${toolId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name, tooltype: category, soncmp: location, price, good: 1, borrow: status === 'borrowed' ? 1 : 0 }),
+      });
+      const idx = AppState.tools.findIndex(t => t.id === toolId);
+      if (idx >= 0) Object.assign(AppState.tools[idx], { name, category, price, status, location });
       showToast('success', '更新成功', `${name} 信息已更新`);
+    } else {
+      const payload = { name, price, soncmp: location };
+      result = await api('/tools', { method: 'POST', body: JSON.stringify(payload) });
+      AppState.tools.unshift({
+        id: result.tid, name, category, brand, model, price, status: 'available',
+        location, quantity: 1, available: 1, good: 'Normal',
+      });
+      showToast('success', '添加成功', `${name} 已添加到工具库`);
     }
-  } else {
-    // 新增
-    const newTool = {
-      id: generateId('T'),
-      name, category, brand, model, quantity, available, location, price, status,
-      purchaseDate: formatDate(new Date().toISOString()),
-      image: '',
-    };
-    AppState.tools.unshift(newTool);
-    showToast('success', '添加成功', `${name} 已添加到工具库`);
-  }
 
-  document.querySelector('.modal-overlay').remove();
-  renderTools(document.getElementById('page-content'));
+    document.querySelector('.modal-overlay').remove();
+    renderTools(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '操作失败', err.message);
+  }
 }
 
 function deleteTool(toolId) {
@@ -785,12 +805,17 @@ function deleteTool(toolId) {
   document.body.appendChild(overlay);
 }
 
-function confirmDeleteTool(toolId) {
+async function confirmDeleteTool(toolId) {
   const tool = AppState.tools.find(t => t.id === toolId);
-  AppState.tools = AppState.tools.filter(t => t.id !== toolId);
-  document.querySelector('.modal-overlay').remove();
-  showToast('success', '删除成功', `${tool ? tool.name : '工具'} 已从库中移除`);
-  renderTools(document.getElementById('page-content'));
+  try {
+    await api(`/tools/${toolId}`, { method: 'DELETE' });
+    AppState.tools = AppState.tools.filter(t => t.id !== toolId);
+    document.querySelector('.modal-overlay').remove();
+    showToast('success', '删除成功', `${tool ? tool.name : '工具'} 已从库中移除`);
+    renderTools(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '删除失败', err.message);
+  }
 }
 
 // ========== 员工管理视图 ==========
@@ -975,7 +1000,7 @@ function openEmployeeModal(empId) {
   document.body.appendChild(overlay);
 }
 
-function saveEmployee(empId) {
+async function saveEmployee(empId) {
   const name = document.getElementById('modal-emp-name').value.trim();
   const department = document.getElementById('modal-emp-department').value;
   const position = document.getElementById('modal-emp-position').value.trim();
@@ -988,25 +1013,30 @@ function saveEmployee(empId) {
     return;
   }
 
-  if (empId) {
-    const emp = AppState.employees.find(e => e.id === empId);
-    if (emp) {
-      Object.assign(emp, { name, department, position, phone, email, status });
+  try {
+    if (empId) {
+      await api(`/employees/${empId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name, depart: department, worktype: position }),
+      });
+      const idx = AppState.employees.findIndex(e => e.id === empId);
+      if (idx >= 0) Object.assign(AppState.employees[idx], { name, department, position });
       showToast('success', '更新成功', `${name} 信息已更新`);
+    } else {
+      const payload = { name, depart: department, worktype: position, soncmp: 'FastRepair HQ' };
+      const result = await api('/employees', { method: 'POST', body: JSON.stringify(payload) });
+      AppState.employees.unshift({
+        id: result.eid, name, department, position, phone, email,
+        status: 'active', joinDate: formatDate(new Date().toISOString()), avatar: '',
+      });
+      showToast('success', '添加成功', `${name} 已添加到员工列表`);
     }
-  } else {
-    const newEmp = {
-      id: generateId('E'),
-      name, department, position, phone, email, status,
-      joinDate: formatDate(new Date().toISOString()),
-      avatar: '',
-    };
-    AppState.employees.unshift(newEmp);
-    showToast('success', '添加成功', `${name} 已添加到员工列表`);
-  }
 
-  document.querySelector('.modal-overlay').remove();
-  renderEmployees(document.getElementById('page-content'));
+    document.querySelector('.modal-overlay').remove();
+    renderEmployees(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '操作失败', err.message);
+  }
 }
 
 function deleteEmployee(empId) {
@@ -1036,12 +1066,17 @@ function deleteEmployee(empId) {
   document.body.appendChild(overlay);
 }
 
-function confirmDeleteEmployee(empId) {
+async function confirmDeleteEmployee(empId) {
   const emp = AppState.employees.find(e => e.id === empId);
-  AppState.employees = AppState.employees.filter(e => e.id !== empId);
-  document.querySelector('.modal-overlay').remove();
-  showToast('success', '删除成功', `${emp ? emp.name : '员工'} 已从系统中移除`);
-  renderEmployees(document.getElementById('page-content'));
+  try {
+    await api(`/employees/${empId}`, { method: 'DELETE' });
+    AppState.employees = AppState.employees.filter(e => e.id !== empId);
+    document.querySelector('.modal-overlay').remove();
+    showToast('success', '删除成功', `${emp ? emp.name : '员工'} 已从系统中移除`);
+    renderEmployees(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '删除失败', err.message);
+  }
 }
 
 // ========== 借用管理视图 ==========
@@ -1205,69 +1240,68 @@ function openLendingModal() {
   document.body.appendChild(overlay);
 }
 
-function saveLending() {
+async function saveLending() {
   const toolId = document.getElementById('modal-lending-tool').value;
   const employeeId = document.getElementById('modal-lending-employee').value;
   const expectedReturn = document.getElementById('modal-lending-return').value;
   const purpose = document.getElementById('modal-lending-purpose').value.trim();
 
-  if (!toolId || !employeeId || !expectedReturn) {
+  if (!toolId || !employeeId) {
     showToast('warning', '提示', '请填写完整的借用信息');
     return;
   }
 
   const tool = AppState.tools.find(t => t.id === toolId);
   const employee = AppState.employees.find(e => e.id === employeeId);
-
   if (!tool || !employee) return;
 
-  // 创建借用记录
-  const record = {
-    id: generateId('L'),
-    toolId: tool.id,
-    toolName: tool.name,
-    employeeId: employee.id,
-    employeeName: employee.name,
-    borrowDate: formatDate(new Date().toISOString()),
-    returnDate: '',
-    expectedReturn: expectedReturn,
-    status: 'active',
-    purpose: purpose || '未填写',
-  };
+  try {
+    const result = await api('/lending', {
+      method: 'POST',
+      body: JSON.stringify({ eid: employeeId, tid: toolId }),
+    });
 
-  AppState.lendingRecords.unshift(record);
+    AppState.lendingRecords.unshift({
+      id: result.lid, toolId, toolName: tool.name,
+      employeeId, employeeName: employee.name,
+      borrowDate: result.lendtime || formatDate(new Date().toISOString()),
+      returnDate: '', expectedReturn, status: 'active', purpose: purpose || '',
+    });
 
-  // 更新工具可用数量
-  if (tool.available > 0) {
-    tool.available--;
-    if (tool.available === 0 && tool.status === 'available') {
-      tool.status = 'borrowed';
+    if (tool.available > 0) {
+      tool.available--;
+      if (tool.available === 0) tool.status = 'borrowed';
     }
-  }
 
-  document.querySelector('.modal-overlay').remove();
-  showToast('success', '借出成功', `${tool.name} 已借给 ${employee.name}`);
-  renderLending(document.getElementById('page-content'));
+    document.querySelector('.modal-overlay').remove();
+    showToast('success', '借出成功', `${tool.name} 已借给 ${employee.name}`);
+    renderLending(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '借出失败', err.message);
+  }
 }
 
-function returnTool(recordId) {
+async function returnTool(recordId) {
   const record = AppState.lendingRecords.find(r => r.id === recordId);
   if (!record) return;
 
-  record.status = 'returned';
-  record.returnDate = formatDate(new Date().toISOString());
+  try {
+    await api(`/lending/${recordId}/return`, { method: 'PUT' });
 
-  // 更新工具可用数量
-  const tool = AppState.tools.find(t => t.id === record.toolId);
-  if (tool) {
-    tool.available++;
-    if (tool.status === 'borrowed' && tool.available > 0) {
-      tool.status = 'available';
+    record.status = 'returned';
+    record.returnDate = formatDate(new Date().toISOString());
+
+    const tool = AppState.tools.find(t => t.id === record.toolId);
+    if (tool) {
+      tool.available++;
+      if (tool.available > 0) tool.status = 'available';
     }
-  }
 
-  showToast('success', '归还成功', `${record.toolName} 已由 ${record.employeeName} 归还`);
-  renderLending(document.getElementById('page-content'));
+    showToast('success', '归还成功', `${record.toolName} 已由 ${record.employeeName} 归还`);
+    renderLending(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '归还失败', err.message);
+  }
 }
 
 // ========== 借用申请视图 ==========
@@ -1309,8 +1343,8 @@ function renderRequests(container) {
             <div class="request-card-detail">&#x1F4DD; 申请理由: ${req.reason}</div>
           </div>
           <div class="request-card-actions">
-            <button class="btn btn-success btn-sm" onclick="approveRequest('${req.id}')">&#x2705; 批准</button>
-            <button class="btn btn-danger btn-sm" onclick="rejectRequest('${req.id}')">&#x2716; 拒绝</button>
+            <button class="btn btn-success btn-sm" onclick="approveRequest('${req.employeeId}','${req.toolId}')">&#x2705; 批准</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectRequest('${req.employeeId}','${req.toolId}')">&#x2716; 拒绝</button>
           </div>
         </div>
       `).join('') : `
@@ -1406,7 +1440,7 @@ function openRequestModal() {
   document.body.appendChild(overlay);
 }
 
-function submitRequest() {
+async function submitRequest() {
   const toolId = document.getElementById('modal-req-tool').value;
   const employeeId = document.getElementById('modal-req-employee').value;
   const quantity = parseInt(document.getElementById('modal-req-quantity').value) || 1;
@@ -1419,79 +1453,78 @@ function submitRequest() {
 
   const tool = AppState.tools.find(t => t.id === toolId);
   const employee = AppState.employees.find(e => e.id === employeeId);
-
   if (!tool || !employee) return;
 
-  const request = {
-    id: generateId('R'),
-    toolId: tool.id,
-    toolName: tool.name,
-    employeeId: employee.id,
-    employeeName: employee.name,
-    requestDate: formatDate(new Date().toISOString()),
-    reason: reason,
-    status: 'pending',
-    quantity: quantity,
-  };
+  try {
+    const result = await api('/requests', {
+      method: 'POST',
+      body: JSON.stringify({ tid: toolId }),
+    });
 
-  AppState.borrowRequests.unshift(request);
+    AppState.borrowRequests.unshift({
+      id: toolId, toolId, toolName: tool.name,
+      employeeId, employeeName: employee.name,
+      requestDate: result.lendtime || formatDate(new Date().toISOString()),
+      reason, status: 'pending', quantity,
+    });
 
-  // 添加通知
-  AppState.notifications.unshift({
-    id: generateId('N'),
-    type: 'info',
-    title: '新借用申请',
-    desc: `${employee.name} 申请借用 ${tool.name}`,
-    time: '刚刚',
-    read: false,
-  });
+    AppState.notifications.unshift({
+      id: 'N' + Date.now(), type: 'info',
+      title: '新借用申请',
+      desc: `${employee.name} 申请借用 ${tool.name}`,
+      time: '刚刚', read: false,
+    });
 
-  updateNotificationBadge();
-
-  document.querySelector('.modal-overlay').remove();
-  showToast('success', '申请已提交', `${tool.name} 的借用申请已提交，等待审批`);
-  renderRequests(document.getElementById('page-content'));
+    updateNotificationBadge();
+    document.querySelector('.modal-overlay').remove();
+    showToast('success', '申请已提交', `${tool.name} 的借用申请已提交，等待审批`);
+    renderRequests(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '提交失败', err.message);
+  }
 }
 
-function approveRequest(reqId) {
-  const req = AppState.borrowRequests.find(r => r.id === reqId);
+async function approveRequest(eid, tid) {
+  const req = AppState.borrowRequests.find(r => r.employeeId === eid && r.toolId === tid);
   if (!req) return;
 
-  req.status = 'approved';
+  try {
+    await api(`/requests/${eid}/${tid}/approve`, { method: 'PUT' });
 
-  // 自动创建借用记录
-  const tool = AppState.tools.find(t => t.id === req.toolId);
-  if (tool && tool.available > 0) {
-    tool.available--;
-    if (tool.available === 0 && tool.status === 'available') {
-      tool.status = 'borrowed';
+    req.status = 'approved';
+
+    const tool = AppState.tools.find(t => t.id === tid);
+    if (tool && tool.available > 0) {
+      tool.available--;
+      if (tool.available === 0) tool.status = 'borrowed';
+
+      AppState.lendingRecords.unshift({
+        id: 'L' + Date.now(), toolId: tid, toolName: tool.name,
+        employeeId: eid, employeeName: req.employeeName,
+        borrowDate: formatDate(new Date().toISOString()),
+        returnDate: '', expectedReturn: '', status: 'active', purpose: '',
+      });
     }
 
-    AppState.lendingRecords.unshift({
-      id: generateId('L'),
-      toolId: tool.id,
-      toolName: tool.name,
-      employeeId: req.employeeId,
-      employeeName: req.employeeName,
-      borrowDate: formatDate(new Date().toISOString()),
-      returnDate: '',
-      expectedReturn: formatDate(new Date(Date.now() + 7 * 86400000).toISOString()),
-      status: 'active',
-      purpose: req.reason,
-    });
+    showToast('success', '已批准', `${req.employeeName} 的借用申请已批准`);
+    renderRequests(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '操作失败', err.message);
   }
-
-  showToast('success', '已批准', `${req.employeeName} 的借用申请已批准`);
-  renderRequests(document.getElementById('page-content'));
 }
 
-function rejectRequest(reqId) {
-  const req = AppState.borrowRequests.find(r => r.id === reqId);
+async function rejectRequest(eid, tid) {
+  const req = AppState.borrowRequests.find(r => r.employeeId === eid && r.toolId === tid);
   if (!req) return;
 
-  req.status = 'rejected';
-  showToast('info', '已拒绝', `${req.employeeName} 的借用申请已拒绝`);
-  renderRequests(document.getElementById('page-content'));
+  try {
+    await api(`/requests/${eid}/${tid}/reject`, { method: 'PUT' });
+    req.status = 'rejected';
+    showToast('info', '已拒绝', `${req.employeeName} 的借用申请已拒绝`);
+    renderRequests(document.getElementById('page-content'));
+  } catch (err) {
+    showToast('error', '操作失败', err.message);
+  }
 }
 
 // ========== 通知系统 ==========
@@ -1552,10 +1585,11 @@ function renderNotificationList() {
   `).join('');
 }
 
-function markNotificationRead(id) {
+async function markNotificationRead(id) {
   const notif = AppState.notifications.find(n => n.id === id);
   if (notif) {
     notif.read = true;
+    try { await api(`/notifications/${id}/read`, { method: 'PUT' }); } catch (e) {}
     updateNotificationBadge();
     renderNotificationList();
   }
@@ -1617,8 +1651,11 @@ function updateClock() {
 
 // ========== 初始化 ==========
 function initApp() {
-  // 初始化模拟数据
-  initMockData();
+  // Token 检查：如果有 token 但当前无用户，尝试恢复会话
+  const savedToken = localStorage.getItem('tws_token');
+  if (savedToken) {
+    // 有 token 时保留，登录后将重新获取数据
+  }
 
   // 绑定登录表单
   const loginForm = document.getElementById('login-form');

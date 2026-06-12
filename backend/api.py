@@ -1,76 +1,48 @@
 # -*- coding: utf-8 -*-
 """
-ETMS (Employee & Tool Management System) - 重构版 RESTful API 后端
-====================================================================
+ETMS (Employee & Tool Management System) — RESTful API 服务
+============================================================
 
-架构改进说明（相比原始 web.py）：
-------------------------------------
+本模块为 TWS 系统的 Web 服务层，负责处理前端 SPA 的 HTTP 请求，
+通过 JSON 格式进行数据交互。技术要点：
 
 1. 【前后端分离】
-   原始系统: Flask 直接渲染 Jinja2 模板，服务端生成 HTML，前后端耦合严重。
-   重构后:   纯 JSON API，前端（SPA）通过 AJAX/Fetch 调用接口，实现前后端完全分离。
-             这使得前端可以独立开发、部署，后端专注于业务逻辑。
+   后端仅输出 JSON 数据，不参与页面渲染。前端 SPA 通过 Fetch API
+   调用接口，二者独立开发、独立部署。
 
-2. 【RESTful 设计】
-   原始系统: URL 设计不规范（如 /select, /lend_info），HTTP 方法使用混乱，
-             POST 既用于创建也用于查询跳转。
-   重构后:   遵循 REST 规范：
-             - GET 用于读取资源
-             - POST 用于创建资源
-             - PUT 用于更新资源
-             - DELETE 用于删除资源
-             - URL 路径表示资源层次（如 /api/tools/<tid>）
+2. 【RESTful 规范】
+   - GET    读取资源
+   - POST   创建资源
+   - PUT    更新资源
+   - DELETE 删除资源
+   URL 路径体现资源层级（如 /api/tools/<tid>）。
 
-3. 【SQL 注入防护】
-   原始系统: 使用字符串格式化（sql % (username, password)）拼接 SQL，
-             存在严重的 SQL 注入漏洞。攻击者可通过构造恶意输入绕过认证或篡改数据。
-   重构后:   全部使用 pymysql 参数化查询（cursor.execute(sql, (param1, param2))），
-             数据库驱动自动处理参数转义，从根本上杜绝 SQL 注入。
+3. 【参数化查询】
+   所有数据库操作使用 pymysql 参数化查询，由数据库驱动自动处理
+   参数转义，杜绝 SQL 注入。
 
 4. 【JWT 令牌认证】
-   原始系统: 使用 Flask session（基于 Cookie），服务端存储会话状态，
-             不适合分布式部署，且 CSRF 攻击风险较高。
-   重构后:   使用 JWT (JSON Web Token) 无状态认证：
-             - 登录成功后签发包含用户信息的 token
-             - 客户端每次请求在 Authorization 头中携带 token
-             - 服务端验证 token 签名即可确认身份，无需存储会话
-             - 支持设置过期时间，增强安全性
+   无状态认证机制：登录后签发 token，客户端在 Authorization 头
+   携带 token，服务端验证签名即可确认身份。
 
-5. 【Blueprint 模块化架构】
-   原始系统: 所有路由、业务逻辑、数据库操作全部写在 web.py 一个文件中（355行），
-             难以维护和扩展。
-   重构后:   使用 Flask Blueprint 将系统拆分为独立模块：
-             - auth_bp:    认证相关（登录、获取当前用户）
-             - tools_bp:   工具管理（CRUD）
-             - employees_bp: 员工管理（CRUD）
-             - lending_bp: 借还管理（借出记录、归还操作）
-             - requests_bp: 工具申请（提交、审批、拒绝）
-             - dashboard_bp: 仪表盘统计
-             每个模块职责单一，可独立开发和测试。
+5. 【Blueprint 模块化】
+   - auth_bp:      用户认证（登录、获取当前用户）
+   - tools_bp:     工具管理（CRUD）
+   - employees_bp: 员工管理（CRUD）
+   - lending_bp:   借还管理（借出记录、归还操作）
+   - requests_bp:  工具申请（提交、审批、拒绝）
+   - dashboard_bp: 仪表盘统计
 
 6. 【统一错误处理】
-   原始系统: 错误处理粗糙，大部分用 try/except 吞掉异常只打印信息，
-             连接泄漏（except 中 conn.close() 但 finally 未保证关闭）。
-   重构后:   统一的 JSON 错误响应格式 { "success": false, "message": "..." }
-             全局错误处理器捕获未处理异常
-             数据库连接使用 try/finally 确保释放
+   统一 JSON 响应格式，全局错误处理器兜底，数据库连接 try/finally 确保释放。
 
 7. 【CORS 跨域支持】
-   原始系统: 前后端同源部署，无跨域问题。
-   重构后:   使用 flask-cors 支持跨域请求，允许前端 SPA（可能在不同端口或域名）
-             调用后端 API。
+   flask-cors 允许前端 SPA 跨域调用 API。
 
 8. 【输入验证】
-   原始系统: 直接从 request.form 取值使用，无任何验证。
-   重构后:   对必填字段、字段长度、字段类型进行基本验证，
-             防止无效数据进入数据库。
+   对必填字段、字段长度、字段类型做基本校验。
 
-数据库连接说明：
------------------
-- 使用 pymysql 连接 MySQL 数据库 TWS
-- 数据库表结构与原始 create_database.sql 完全一致
-- 每次请求创建新连接，请求结束后在 finally 中关闭
-- 生产环境建议使用连接池（如 DBUtils），此处为简化实现
+数据库：MySQL，库名 TWS，表结构与 simulation/create_database.sql 一致。
 
 依赖安装：
 -----------
