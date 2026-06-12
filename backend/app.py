@@ -28,15 +28,24 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tws-system-secret'
 
 # ============================================================
-# CORS
+# CORS support (allow frontend at localhost:8080 to call API)
 # ============================================================
-
 @app.after_request
-def add_cors_headers(response):
+def cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     return response
+
+
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        resp = app.make_default_options_response()
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        return resp
 
 # ============================================================
 # TWS Warehouse Simulation
@@ -742,9 +751,9 @@ def create_lending():
     if not tool:
         return fail("Tool not found")
 
-    # Permission: expert can borrow any, normal only same company
-    if user['Worktype'] == 'normal' and user['Soncmp'] != tool['Soncmp']:
-        return fail("Normal employees can only borrow tools from their own company")
+    # Permission: expert can borrow any, normal only same department
+    if user['Worktype'] == 'normal' and user['Depart'] != tool['Soncmp']:
+        return fail("Normal employees can only borrow tools from their own department")
 
     if tool['Good'] == 0:
         return fail("Tool is damaged")
@@ -824,8 +833,8 @@ def create_request():
 
     # Permission check
     user = db.execute("SELECT * FROM EMPLOYEE WHERE EID = ?", (current_eid,)).fetchone()
-    if user['Worktype'] == 'normal' and user['Soncmp'] != tool['Soncmp']:
-        return fail("You can only request tools from your own company")
+    if user['Worktype'] == 'normal' and user['Depart'] != tool['Soncmp']:
+        return fail("You can only request tools from your own department")
 
     # Mark as pending
     db.execute("UPDATE TOOL SET Borrow = -1 WHERE TID = ?", (tid,))
